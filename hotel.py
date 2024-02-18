@@ -1,35 +1,59 @@
+"""Clase para creacion y administracion de un hotel.
+    """
 import json
 import os
 
+
 class Hotel:
+    """Clase para representar un hotel.
+    Esta clase contiene información sobre el hotel, como su nombre,
+    la lista de habitaciones disponibles, las reservas realizadas, etc.
+    """
     def __init__(self, name, location, rooms, reservations=None):
+        """Inicializa una nueva instancia de la clase Hotel.
+        """
         self.name = name
         self.location = location
         self.rooms = rooms
         self.reservations = reservations if reservations is not None else []
 
     def to_dict(self):
+        """Conversion de un objeto a Diccionario.
+        """
         return {
             "name": self.name,
             "location": self.location,
             "rooms": [room.to_dict() for room in self.rooms],
-            "reservations": [reservation.to_dict() for reservation in self.reservations]
+            "reservations": [reservation.to_dict()
+                             for reservation in self.reservations]
         }
 
     @classmethod
     def from_dict(cls, data):
+        """Inicializa de objetos apartir de diccionarios.
+        """
         rooms = [Room(**room_data) for room_data in data['rooms']]
-        reservations = [Reservation(**reservation_data) for reservation_data in data.get('reservations', [])]
+        reservations = [Reservation(**reservation_data)
+                        for reservation_data in data.get('reservations', [])]
         return cls(data['name'], data['location'], rooms, reservations)
 
+
 class Room:
+    """Clase para representar una habitacion.
+    Esta clase contiene información sobre la habitacion, como su capacidad,
+    precio, numero de habitacion y tipo.
+    """
     def __init__(self, number, room_type, capacity, price):
+        """Inicializa una nueva instancia de la clase Room.
+        """
         self.number = number
         self.room_type = room_type
         self.capacity = capacity
         self.price = price
 
     def to_dict(self):
+        """Conversion de un objeto a Diccionario.
+        """
         return {
             "number": self.number,
             "room_type": self.room_type,
@@ -38,17 +62,30 @@ class Room:
         }
 
     def __str__(self):
-        return f"Habitación {self.number}: Tipo {self.room_type}, Capacidad {self.capacity}, Precio {self.price}"
-    
+        """Objeto room to String.
+        """
+        return f"Habitación {self.number}: Tipo {self.room_type},\
+              Capacidad {self.capacity}, Precio {self.price}"
+
+
 class Reservation:
+    """Clase para representar una reservacion.
+    Esta clase contiene información sobre la reservacion, hotel
+    habitacion, huesped.
+    """
     def __init__(self, reservation_id, hotel, room, guest_name):
+        """Inicializa una nueva instancia de la clase Reservation.
+        """
         self.reservation_id = reservation_id
         self.hotel = hotel
         self.room = room
         self.guest_name = guest_name
 
     def to_dict(self):
-        room_data = self.room.to_dict() if isinstance(self.room, Room) else self.room
+        """Conversion de un objeto a Diccionario.
+        """
+        room_data = self.room.to_dict() if isinstance(self.room, Room)\
+            else self.room
         return {
             "reservation_id": self.reservation_id,
             "hotel": {
@@ -59,17 +96,23 @@ class Reservation:
             "guest_name": self.guest_name
         }
 
+
 class HotelManager:
+    """Clase para representar la adminstracion del Hotel.
+    """
     def __init__(self, filename):
+        """Inicializa una nueva instancia de la clase Hotel Manager.
+        """
         self.filename = filename
         self.hotels = self.load_hotels()
-        self.reservations = []  # Agregar el atributo para almacenar las reservaciones
-
+        self.reservations = []
 
     def load_hotels(self):
+        """Metodo que abre el archivo Json con la informacion  guardada.
+        """
         hotels = []
         if os.path.exists(self.filename):
-            with open(self.filename, 'r') as file:
+            with open(self.filename, 'r', encoding='utf-8') as file:
                 hotels_data = json.load(file)
                 for hotel_data in hotels_data:
                     hotel = Hotel.from_dict(hotel_data)
@@ -77,27 +120,34 @@ class HotelManager:
         return hotels
 
     def save_hotels(self):
+        """Metodo que almacena Hoteles.
+        """
         hotels_data = []
         for hotel in self.hotels:
             hotel_data = hotel.to_dict()
             hotel_data["reservations"] = [reservation.to_dict() for reservation in hotel.reservations]
             hotels_data.append(hotel_data)
-        
-        with open(self.filename, 'w') as file:
+
+        with open(self.filename, 'w', encoding='utf-8') as file:
             json.dump(hotels_data, file, indent=4)
 
-
     def create_hotel(self, name, location):
+        """Metodo que crea un hotel.
+        """
         hotel = Hotel(name, location, [])
         self.hotels.append(hotel)
         self.save_hotels()
         return hotel
 
     def display_all_hotels(self):
+        """Metodo que consulta todos los hoteles.
+        """
         for index, hotel in enumerate(self.hotels, start=1):
             print(f"{index}. {hotel.name} ({hotel.location})")
 
     def delete_hotel(self, index):
+        """Metodo que elimina un hotel.
+        """
         if 0 < index <= len(self.hotels):
             del self.hotels[index - 1]
             self.save_hotels()
@@ -106,76 +156,107 @@ class HotelManager:
             print("Índice de hotel inválido.")
 
     def search_hotels_by_location(self, location):
+        """Metodo que consulta hoteles por location.
+        """
         found_hotels = [hotel for hotel in self.hotels if hotel.location == location]
         return found_hotels
 
     def get_hotel_by_index(self, index):
-        if 0 < index <= len(self.hotels):
-            return self.hotels[index - 1]
-        else:
-            return None
-        
+        """Metodo que consulta hoteles por index.
+        """
+        return self.hotels[index - 1]
+
     def create_reservation(self, hotel, room, guest_name):
+        """Metodo que crea una reserbacion.
+        """
         existing_reservation = self.find_reservation(hotel, room)
         if existing_reservation:
             print("Ya existe una reserva para esta habitación.")
             return existing_reservation
         else:
-            reservation_id = len(hotel.reservations) + 1  # Generar un ID de reserva único para este hotel
+            reservation_id = len(hotel.reservations) + 1
             reservation = Reservation(reservation_id, hotel, room, guest_name)
-            hotel.reservations.append(reservation)  # Agregar la reserva a la lista de reservaciones del hotel
-            self.save_hotels()  # Guardar los cambios en el archivo JSON
+            hotel.reservations.append(reservation)
+            self.save_hotels()
             return reservation
 
     def find_reservation(self, hotel, room):
+        """Metodo que consulta una reservacion.
+        """
         for reservation in hotel.reservations:
             if reservation.room == room:
                 return reservation
         return None
 
     def search_reservations_by_hotel(self, hotel):
+        """Metodo que consulta reservacion por hotel.
+        """
         return [reservations for reservations in hotel.reservations]
 
     def search_reservation_by_id(self, reservation_id):
+        """Metodo que consulta reservaciones por id.
+        """
         for hotel in self.hotels:
             for reservation in hotel.reservations:
                 if reservation.reservation_id == reservation_id:
                     return reservation
         return None
 
+
 class RoomManager:
+    """Clase para representar la Administracion de una Habitacion.
+    """
     def __init__(self):
+        """Inicializa una nueva instancia de la clase Room Manager.
+        """
         self.rooms = []
 
-    def create_room(self,hotel_manager, hotel, number, room_type, capacity, price):
+    def create_room(self, hotel_manager, hotel, number, room_type, capacity, price):
+        """Metodo que crea una habitacion.
+        """
         room = Room(number, room_type, capacity, price)
         hotel.rooms.append(room)
         hotel_manager.save_hotels()
         return room
 
     def search_rooms_by_hotel(self, hotel):
+        """Metodo que consulta una habitacion por hotel.
+        """
         return hotel.rooms
 
     def search_rooms_by_hotel_and_type(self, hotel, room_type):
+        """Metodo que consulta una habitacion por hotel y tipo.
+        """
         found_rooms = [room for room in hotel.rooms if room.room_type == room_type]
         return found_rooms
 
     def search_rooms_by_hotel_type_and_price(self, hotel, room_type, max_price):
+        """Metodo que consulta una habitacion por hotel tipo y precio.
+        """
         found_rooms = [room for room in hotel.rooms if room.room_type == room_type and room.price <= max_price]
         return found_rooms
-    
+
     def display_all_rooms(self, hotel):
+        """Metodo que consulta todas las habitaciones por hotel.
+        """
         print(f"Habitaciones del hotel {hotel.name}:")
         for room in hotel.rooms:
-            print(f"Número: {room.number}, Tipo: {room.room_type}, Capacidad: {room.capacity}, Precio: {room.price}")
+            print(f"Número: {room.number}, Tipo: {room.room_type},  \
+                  Capacidad: {room.capacity}, Precio: {room.price}")
 
     def get_room_by_number(self, hotel, room_number):
+        """Metodo que consulta habitaciones por numero.
+        """
         for room in hotel.rooms:
             if room.number == room_number:
                 return room
         return None
 
+
 def main():
+    """
+    Función principal que ejecuta el programa.
+    """
     hotel_manager = HotelManager("hotels.json")
     room_manager = RoomManager()
 
@@ -191,8 +272,7 @@ def main():
         print("8. Buscar habitaciones por hotel, tipo y precio")
         print("9. Crear reserva")
         print("10. Buscar reservaciones por hotel")
-        print("11. Buscar reserva por ID")
-        print("12. Salir")
+        print("11. Salir")
 
         choice = input("Seleccione una opción: ")
 
@@ -230,7 +310,7 @@ def main():
                 room_type = input("Ingrese el tipo de habitación: ")
                 capacity = int(input("Ingrese la capacidad de la habitación: "))
                 price = float(input("Ingrese el precio de la habitación por noche: "))
-                room = room_manager.create_room(hotel_manager,hotel, number, room_type, capacity, price)
+                room = room_manager.create_room(hotel_manager, hotel, number, room_type, capacity, price)
                 print(f"Habitación {room.number} creada exitosamente.")
             else:
                 print("Hotel no encontrado.")
@@ -309,26 +389,17 @@ def main():
                 if reservations:
                     print("\nReservaciones encontradas:")
                     for reservation in reservations:
-                        print(f"ID: {reservation.reservation_id}, Huésped: {reservation.guest_name}, Habitación: {reservation.room.number}")
+                        print(f"ID: {reservation.reservation_id},  \
+                              Huésped: {reservation.guest_name}")
                 else:
                     print("No se encontraron reservaciones para este hotel.")
             else:
                 print("¡Hotel no encontrado!")
 
         elif choice == "11":
-            reservation_id = int(input("Ingrese el ID de la reserva: "))
-            reservation = hotel_manager.search_reservation_by_id(hotel,reservation_id)
-            if reservation:
-                print("\nReserva encontrada:")
-                print(f"ID: {reservation.reservation_id}, Huésped: {reservation.guest_name}, Hotel: {reservation.hotel.name}, Habitación: {reservation.room.number}")
-            else:
-                print("No se encontró ninguna reserva con ese ID.")
-
-        elif choice == "12":
             print("¡Hasta luego!")
             break
 
-        
 
 if __name__ == "__main__":
     main()
